@@ -1,103 +1,138 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [url, setUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [clonedHtml, setClonedHtml] = useState('');
+  const [error, setError] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+    setError('');
+  };
+
+  const handleClone = async () => {
+    if (!url) {
+      setError('Please enter a valid URL');
+      return;
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      setError('Please enter a valid URL');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/clone', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) throw new Error('Failed to clone website');
+
+      const data = await response.json();
+      setClonedHtml(data.html);
+    } catch (err) {
+      setError('Failed to clone website. Please try again.');
+      console.error('Clone error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleClone();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col">
+      {/* Header */}
+      <header className="flex justify-between items-center p-6">
+        <div className="flex items-center space-x-3">
+          <h1 className="text-white text-xl font-semibold">Clone Sphere</h1>
         </div>
+
+        {/* Menu button */}
+        <button className="text-white p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <div className="w-6 h-6 flex flex-col justify-center space-y-1">
+            <div className="w-full h-0.5 bg-white"></div>
+            <div className="w-full h-0.5 bg-white"></div>
+            <div className="w-full h-0.5 bg-white"></div>
+          </div>
+        </button>
+      </header>
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col items-center justify-start pt-20 px-6">
+        {/* Sphere + Curved Text */}
+        <div className="relative mb-8 pb-20">
+          {/* Sphere image */}
+          <div className="relative w-64 h-64 mx-auto rounded-full overflow-hidden shadow-2xl">
+            <Image
+              src="/media/clonesphere.png"
+              alt="Clone Sphere"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+
+          {/* Curved text with SVG */}
+          <svg
+            className="absolute top-[60%] left-1/2 transform -translate-x-1/2"
+            width="320"
+            height="200"
+            viewBox="0 0 320 160"
+          >
+            <defs>
+              <path
+                id="curve"
+                d="M 40,0 A 160,160 0 0,0 280,0"
+                fill="transparent"
+              />
+            </defs>
+            <text fill="white" fontSize="37.5" fontWeight="500">
+              <textPath href="#curve" startOffset="48%" textAnchor="middle">
+                Clone ✨ Sphere
+              </textPath>
+            </text>
+          </svg>
+        </div>
+
+        {/* Input bar */}
+        <div className="flex items-center bg-[#333] rounded-md px-4 py-2 w-150">
+          <input
+            type="text"
+            placeholder="Enter URL"
+            value={url}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyPress}
+            className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none"
+          />
+          <button
+            onClick={handleClone}
+            className="ml-2 text-white hover:opacity-80 transition"
+            aria-label="Clone"
+          >
+            ⏶
+          </button>
+        </div>
+
+        {error && <p className="text-red-400 mt-4">{error}</p>}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
