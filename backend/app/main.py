@@ -1,9 +1,7 @@
-# backend/app/main.py
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any
-from .scraper import scrape_website
+from app.scraper import scrape_website
 
 app = FastAPI()
 
@@ -11,7 +9,7 @@ class CloneRequest(BaseModel):
     url: str
 
 @app.post("/clone")
-async def clone_endpoint(request: CloneRequest) -> Dict[str, Any]:
+async def clone_website(request: CloneRequest) -> Dict[str, Any]:
     try:
         result = await scrape_website(request.url)
         return result
