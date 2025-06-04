@@ -7,6 +7,9 @@ export default function Home() {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [clonedHtml, setClonedHtml] = useState('');
+  const [screenshot, setScreenshot] = useState('');
+  const [layout, setLayout] = useState<{ has_nav: boolean; has_header: boolean; has_main: boolean } | null>(null);
+  const [viewMode, setViewMode] = useState<'html' | 'screenshot'>('html');
   const [error, setError] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,6 +32,9 @@ export default function Home() {
 
     setIsLoading(true);
     setError('');
+    setClonedHtml('');
+    setScreenshot('');
+    setLayout(null);
 
     try {
       const response = await fetch('/api/clone', {
@@ -42,7 +48,10 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to clone website');
 
       const data = await response.json();
+      console.log('API response:', data);
       setClonedHtml(data.html);
+      setScreenshot(data.screenshot_base64);
+      setLayout(data.layout || null);
     } catch (err) {
       setError('Failed to clone website. Please try again.');
       console.error('Clone error:', err);
@@ -79,7 +88,6 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-start pt-20 px-6">
         {/* Sphere + Curved Text */}
         <div className="relative mb-8 pb-20">
-          {/* Sphere image */}
           <div className="relative w-64 h-64 mx-auto rounded-full overflow-hidden shadow-2xl">
             <Image
               src="/media/clonesphere.png"
@@ -90,7 +98,6 @@ export default function Home() {
             />
           </div>
 
-          {/* Curved text with SVG */}
           <svg
             className="absolute top-[60%] left-1/2 transform -translate-x-1/2"
             width="320"
@@ -124,6 +131,7 @@ export default function Home() {
           />
           <button
             onClick={handleClone}
+            disabled={isLoading}
             className="ml-2 text-white hover:opacity-80 transition"
             aria-label="Clone"
           >
@@ -132,6 +140,41 @@ export default function Home() {
         </div>
 
         {error && <p className="text-red-400 mt-4">{error}</p>}
+
+        {(clonedHtml || screenshot) && (
+          <div className="mt-12 w-full max-w-5xl bg-white text-black p-6 rounded-lg overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Cloned Site Preview</h2>
+              <button
+                onClick={() => setViewMode(viewMode === 'html' ? 'screenshot' : 'html')}
+                className="text-sm bg-black text-white px-3 py-1 rounded hover:opacity-80"
+              >
+                View as {viewMode === 'html' ? 'Screenshot' : 'HTML'}
+              </button>
+            </div>
+
+            {viewMode === 'html' ? (
+              <iframe
+                srcDoc={clonedHtml}
+                className="w-full h-[80vh] border rounded-md"
+              />
+            ) : (
+              <img
+                src={`data:image/png;base64,${screenshot}`}
+                alt="Website Screenshot"
+                className="w-full h-auto border rounded-md"
+              />
+            )}
+
+            {layout && (
+              <div className="mt-4 text-sm text-gray-700 space-y-1">
+                <p><strong>Has Navigation:</strong> {layout.has_nav ? 'Yes' : 'No'}</p>
+                <p><strong>Has Header:</strong> {layout.has_header ? 'Yes' : 'No'}</p>
+                <p><strong>Has Main Content:</strong> {layout.has_main ? 'Yes' : 'No'}</p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
