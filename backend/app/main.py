@@ -31,7 +31,7 @@ cloner = WebsiteCloner(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 # Request schemas (simplified)
 class CloneRequest(BaseModel):
     url: str
-    mode: str = "iterative"  # "classic", "llm", or "iterative"
+    mode: str = "iterative"  
     max_iterations: int = 1
     quality_threshold: float = 0.85
 
@@ -87,7 +87,7 @@ async def clone_website_endpoint(request: CloneRequest):
     start_time = time.time()
     
     try:
-        print(f"🎯 Starting {request.mode} clone: {request.url}")
+        print(f" Starting {request.mode} clone: {request.url}")
         
         if request.mode == "classic":
             return await handle_classic_clone(request, start_time)
@@ -108,7 +108,7 @@ async def clone_website_endpoint(request: CloneRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         error_msg = str(e)
-        print(f"❌ Clone failed after {processing_time:.2f}s: {error_msg}")
+        print(f" Clone failed after {processing_time:.2f}s: {error_msg}")
         print("Full traceback:", traceback.format_exc())
         
         return CloneResponse(
@@ -120,20 +120,20 @@ async def clone_website_endpoint(request: CloneRequest):
 
 async def handle_classic_clone(request: CloneRequest, start_time: float) -> CloneResponse:
     """Handle classic direct HTML cloning - fast and reliable WITH INTERACTIVE ELEMENTS"""
-    print("🔧 Using Classic Mode (Direct HTML Preservation + Interactive Elements)")
+    print(" Using Classic Mode (Direct HTML Preservation + Interactive Elements)")
     
     # FIXED: Use intelligent scraper with interactive elements enabled
     result = await intelligent_clone(
         request.url, 
         mode="classic", 
-        keep_interactive=True  # ← This enables button/link functionality!
+        keep_interactive=True  
     )
     
     if not result.get("success"):
         raise HTTPException(status_code=500, detail="Classic clone failed")
 
     processing_time = time.time() - start_time
-    print(f"✅ Classic clone with interactive elements completed in {processing_time:.2f}s")
+    print(f" Classic clone with interactive elements completed in {processing_time:.2f}s")
 
     return CloneResponse(
         success=True,
@@ -149,23 +149,23 @@ async def handle_classic_clone(request: CloneRequest, start_time: float) -> Clon
             "mode": "classic",
             "method": "direct_html_preservation",
             "css_inlined": True,
-            "interactive_elements": "enabled",  # ← Updated
-            "links_functional": True,           # ← Updated
-            "buttons_functional": True,         # ← Updated
+            "interactive_elements": "enabled",  
+            "links_functional": True,           
+            "buttons_functional": True,        
             "quality_score": 1.0
         }
     )
 
 async def handle_llm_clone(request: CloneRequest, start_time: float) -> CloneResponse:
     """Handle single-shot LLM cloning with scraper data"""
-    print("🤖 Using LLM Mode (AI Recreation with Scraper Data)")
+    print(" Using LLM Mode (AI Recreation with Scraper Data)")
     
     # Use intelligent scraper in LLM mode for rich context
-    print("📊 Running intelligent scraper...")
+    print(" Running intelligent scraper...")
     scraped_data = await intelligent_clone(
         request.url, 
         mode="llm",
-        keep_interactive=True  # ← Enable for LLM mode too
+        keep_interactive=True  
     )
       
     if not scraped_data.get("success"):
@@ -173,7 +173,7 @@ async def handle_llm_clone(request: CloneRequest, start_time: float) -> CloneRes
 
     # Log what the scraper found
     visual_context = scraped_data.get('visual_context', {})
-    print(f"📈 Scraper found:")
+    print(f" Scraper found:")
     print(f"   - Content sections: {len(visual_context.get('content_sections', []))}")
     print(f"   - Grid layouts: {len(visual_context.get('grid_layouts', []))}")
     print(f"   - Images: {len(visual_context.get('image_descriptions', []))}")
@@ -181,9 +181,9 @@ async def handle_llm_clone(request: CloneRequest, start_time: float) -> CloneRes
 
     # Configure for single pass
     cloner.max_iterations = 1
-    cloner.quality_threshold = 0.0  # Don't stop early for single shot
+    cloner.quality_threshold = 0.0  
     
-    print("🧠 Processing with Claude AI...")
+    print(" Processing with Claude AI...")
     llm_result = await cloner.clone_website(scraped_data)
 
     if not llm_result.get("success"):
@@ -199,9 +199,9 @@ async def handle_llm_clone(request: CloneRequest, start_time: float) -> CloneRes
     content_completeness = llm_result.get("content_completeness", 0.0)
     scraper_utilization = llm_result.get("scraper_data_utilization", 0.0)
     
-    print(f"✅ LLM clone completed in {processing_time:.2f}s")
-    print(f"📊 Visual similarity: {visual_similarity:.3f}")
-    print(f"📊 Content completeness: {content_completeness:.3f}")
+    print(f"LLM clone completed in {processing_time:.2f}s")
+    print(f"Visual similarity: {visual_similarity:.3f}")
+    print(f"Content completeness: {content_completeness:.3f}")
 
     return CloneResponse(
         success=True,
@@ -218,7 +218,7 @@ async def handle_llm_clone(request: CloneRequest, start_time: float) -> CloneRes
 
 async def handle_iterative_clone(request: CloneRequest, start_time: float) -> CloneResponse:
     """Handle FIXED iterative refinement cloning"""
-    print("🎯 Using FIXED Iterative Mode (Content Preservation)")
+    print("Using FIXED Iterative Mode (Content Preservation)")
     
     # Use intelligent scraper in iterative mode
     print("📸 Running comprehensive scraping...")
@@ -233,7 +233,7 @@ async def handle_iterative_clone(request: CloneRequest, start_time: float) -> Cl
 
     # Log comprehensive analysis
     visual_context = scraped_data.get('visual_context', {})
-    print(f"📈 Comprehensive scraper analysis:")
+    print(f"Comprehensive scraper analysis:")
     print(f"   - Content sections: {len(visual_context.get('content_sections', []))}")
     print(f"   - Grid layouts: {len(visual_context.get('grid_layouts', []))}")
     print(f"   - Images positioned: {len(visual_context.get('image_descriptions', []))}")
@@ -245,8 +245,8 @@ async def handle_iterative_clone(request: CloneRequest, start_time: float) -> Cl
     cloner.max_iterations = request.max_iterations
     cloner.quality_threshold = request.quality_threshold
     
-    print(f"⚙️  Configured: {request.max_iterations} max iterations, {request.quality_threshold} quality threshold")
-    print("🔧 Using FIXED refinement logic that preserves content")
+    print(f"Configured: {request.max_iterations} max iterations, {request.quality_threshold} quality threshold")
+    print("Using FIXED refinement logic that preserves content")
     
     # Run FIXED iterative cloning
     print("🔄 Starting FIXED iterative refinement process...")
@@ -266,8 +266,8 @@ async def handle_iterative_clone(request: CloneRequest, start_time: float) -> Cl
     scraper_utilization = llm_result.get("scraper_data_utilization", 0.0)
     iterations = llm_result.get("iterations", 0)
     
-    print(f"✅ FIXED iterative clone completed in {processing_time:.2f}s")
-    print(f"📊 Final metrics after {iterations} iterations:")
+    print(f"FIXED iterative clone completed in {processing_time:.2f}s")
+    print(f"Final metrics after {iterations} iterations:")
     print(f"   - Visual similarity: {final_similarity:.3f}")
     print(f"   - Content completeness: {content_completeness:.3f}")
     print(f"   - Scraper data utilization: {scraper_utilization:.3f}")

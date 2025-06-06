@@ -729,12 +729,12 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
         page = await context.new_page()
         
         try:
-            print(f"🌐 Loading: {url} (mode: {mode}, interactive: {keep_interactive})")
+            print(f"Loading: {url} (mode: {mode}, interactive: {keep_interactive})")
             await page.goto(url, wait_until="networkidle", timeout=60000)
             
             # Enhanced loading for LLM modes
             if mode in ["llm", "iterative"]:
-                print("🔤 Enhanced loading for LLM mode...")
+                print("Enhanced loading for LLM mode...")
                 await page.evaluate("""
                     () => {
                         return document.fonts.ready;
@@ -767,7 +767,7 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
                     }
                 """)
             
-            print("💫 Inlining external stylesheets...")
+            print(" Inlining external stylesheets...")
             # Enhanced CSS inlining with error handling
             await page.add_script_tag(content="""
                 (async () => {
@@ -796,7 +796,7 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
             
             await page.wait_for_timeout(2000)
             
-            print("🔗 Fixing relative URLs...")
+            print(" Fixing relative URLs...")
             # Enhanced relative path fixing - KEEPING FUNCTIONALITY
             base_url_parsed = urlparse(url)
             base_domain = f"{base_url_parsed.scheme}://{base_url_parsed.netloc}"
@@ -866,7 +866,7 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
             
             # CONDITIONAL interactive element handling
             if keep_interactive:
-                print("✅ Keeping interactive elements functional...")
+                print("Keeping interactive elements functional...")
                 # Only add safety measures, don't disable functionality
                 await page.evaluate("""
                     () => {
@@ -903,7 +903,7 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
                     }
                 """)
             else:
-                print("🔒 Disabling interactive elements...")
+                print(" Disabling interactive elements...")
                 await page.evaluate("""
                     () => {
                         // Disable all links
@@ -944,7 +944,7 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
             # Get final processed HTML
             html = await page.content()
             
-            print("📸 Taking screenshot...")
+            print(" Taking screenshot...")
             screenshot = await page.screenshot(
                 type='png', 
                 full_page=True,
@@ -975,9 +975,8 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
             # Enhanced content extraction for LLM modes
             enhanced_data = {}
             if mode in ["llm", "iterative"]:
-                print("📊 Enhanced visual analysis for LLM...")
+                print("Enhanced visual analysis for LLM...")
                 
-                # NEW: Comprehensive visual context extraction
                 visual_context = await extract_comprehensive_visual_context(page, url)
                 
                 # Extract text content with interactive element details
@@ -1107,9 +1106,9 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
                         "viewport_size": {"width": 1920, "height": 1080}
                     },
                     "styles": styles_info,
-                    "visual_context": visual_context,  # NEW: Enhanced visual context
+                    "visual_context": visual_context,  
                     "dom": {
-                        "html_outline": html[:10000],  # First 10k chars
+                        "html_outline": html[:10000],  # first 10k chars
                         "title": title,
                         "complexity": layout_info.get('element_count', 0),
                         "requires_scroll": len(html) > 50000
@@ -1122,11 +1121,11 @@ async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: b
                     }
                 }
             
-            print(f"✅ {mode.capitalize()} scraping completed successfully!")
+            print(f"{mode.capitalize()} scraping completed successfully!")
             print(f"🔗 Interactive elements: {'PRESERVED' if keep_interactive else 'DISABLED'}")
             
         except Exception as e:
-            print(f"❌ Error during scraping: {e}")
+            print(f"Error during scraping: {e}")
             raise e
         finally:
             await browser.close()

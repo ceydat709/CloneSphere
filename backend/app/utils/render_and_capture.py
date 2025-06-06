@@ -8,7 +8,7 @@ async def render_generated_html(html_content: str) -> str:
         page = await context.new_page()
         
         await page.set_content(html_content, wait_until="networkidle")
-        await page.wait_for_timeout(1000)  # Give time for styles to settle
+        await page.wait_for_timeout(1000)  
 
         screenshot = await page.screenshot(full_page=True)
         await browser.close()

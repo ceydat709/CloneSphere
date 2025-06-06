@@ -43,11 +43,9 @@ class WebsiteCloner:
             
             # Categorize based on smart criteria
             if width <= 32 and height <= 32:
-                # Tiny icons - will use Unicode/CSS instead
                 img_data['suggested_type'] = 'icon'
                 tiny_icons.append(img_data)
             elif 'logo' in alt or 'logo' in src.lower() or (width < 200 and height < 100 and img.get('position', {}).get('top', 999) < 200):
-                # Logos - important for branding
                 img_data['suggested_type'] = 'logo'
                 logos.append(img_data)
             elif width >= 100 or height >= 100:
@@ -55,7 +53,6 @@ class WebsiteCloner:
                 img_data['suggested_type'] = 'content'
                 meaningful_images.append(img_data)
             else:
-                # Small but not tiny - check context
                 if any(indicator in context for indicator in ['product', 'feature', 'hero', 'banner', 'main']):
                     img_data['suggested_type'] = 'content'
                     meaningful_images.append(img_data)
@@ -111,7 +108,7 @@ PARAGRAPHS:
         font_families = typography.get('font_families', [])
         
         typography_instructions = f"""
-🔤 TYPOGRAPHY SPECIFICATIONS:
+TYPOGRAPHY SPECIFICATIONS:
 
 CUSTOM FONTS DETECTED ({len(custom_fonts)} web fonts):
 {chr(10).join(f'• {font}' for font in custom_fonts[:5])}
@@ -151,7 +148,7 @@ IMPLEMENTATION RULES:
 
         # SMART image handling with ACTUAL URLs
         image_instructions = f"""
-🖼️ SMART IMAGE IMPLEMENTATION STRATEGY:
+SMART IMAGE IMPLEMENTATION STRATEGY:
 
 PRIORITY 1 - LOGOS ({len(logos)} found):
 {chr(10).join(f'''Logo {i+1}: {img.get("alt", "Logo")}
@@ -174,7 +171,7 @@ For the {len(tiny_icons)} tiny icons (≤32px), use simple CSS icon replacements
 - Or use CSS-only shapes with background colors
 - Don't use <img> tags for these tiny elements
 
-🎯 IMPLEMENTATION RULES:
+IMPLEMENTATION RULES:
 1. ALWAYS implement logos and meaningful images with <img> tags
 2. Use the EXACT URLs provided above (these are from the actual website!)
 3. For tiny icons, use Unicode symbols or CSS shapes instead
@@ -208,7 +205,7 @@ SMART IMAGE SUMMARY:
 
 {layout_info}
 
-🎯 CRITICAL REQUIREMENTS:
+CRITICAL REQUIREMENTS:
 
 1. CONTENT COMPLETENESS:
    • Include ALL navigation items, headings, buttons, and paragraphs listed above
@@ -326,7 +323,7 @@ Return improved version with SMART image strategy and better styling."""
     async def clone_website(self, scraped_data: Dict[str, Any]) -> Dict[str, Any]:
         """Main cloning method with SMART image handling"""
         try:
-            print("🎯 Starting cloning with SMART image filtering...")
+            print("Starting cloning with SMART image filtering...")
             
             context = build_design_context(scraped_data)
             original_screenshot = scraped_data.get("visual", {}).get("screenshot_base64", "") or scraped_data.get("screenshot_base64", "")
@@ -343,21 +340,21 @@ Return improved version with SMART image strategy and better styling."""
             logo_count = len(image_categories['logos'])
             icon_count = len(image_categories['tiny_icons'])
             
-            print(f"🧠 SMART image analysis:")
-            print(f"   📸 Total detected: {len(image_descriptions)} images")
-            print(f"   🏷️  Logos: {logo_count} (will use <img> tags)")
-            print(f"   🖼️  Meaningful images: {meaningful_count} (will use <img> tags)")
-            print(f"   🔍 Tiny icons: {icon_count} (will use Unicode/CSS)")
-            print(f"   🎯 Priority images to implement: {logo_count + meaningful_count}")
+            print(f"SMART image analysis:")
+            print(f"   Total detected: {len(image_descriptions)} images")
+            print(f"   Logos: {logo_count} (will use <img> tags)")
+            print(f"   Meaningful images: {meaningful_count} (will use <img> tags)")
+            print(f"   Tiny icons: {icon_count} (will use Unicode/CSS)")
+            print(f"   Priority images to implement: {logo_count + meaningful_count}")
 
             # Initial generation with smart image handling
-            print("🚀 Generating initial HTML with SMART image strategy...")
+            print("Generating initial HTML with SMART image strategy...")
             html_content = await self._generate_html(scraped_data)
             
             # Validate initial content AND smart images
             initial_content_score = self._simple_content_validation(html_content, scraped_data)
             initial_image_score = self._validate_smart_image_implementation(html_content, scraped_data)
-            print(f"📊 Initial scores - Content: {initial_content_score:.1%}, Smart Images: {initial_image_score:.1%}")
+            print(f"Initial scores - Content: {initial_content_score:.1%}, Smart Images: {initial_image_score:.1%}")
             
             best_html = html_content
             best_similarity = 0.0
@@ -365,7 +362,7 @@ Return improved version with SMART image strategy and better styling."""
 
             # Enhanced iterative refinement with smart image focus
             for iteration in range(1, self.max_iterations + 1):
-                print(f"🔄 Iteration {iteration}: Testing current version...")
+                print(f"Iteration {iteration}: Testing current version...")
                 
                 try:
                     # Test current version
@@ -374,14 +371,14 @@ Return improved version with SMART image strategy and better styling."""
                     content_score = self._simple_content_validation(html_content, scraped_data)
                     image_score = self._validate_smart_image_implementation(html_content, scraped_data)
                     
-                    print(f"📊 Visual: {visual_similarity:.3f}, Content: {content_score:.3f}, Smart Images: {image_score:.3f}")
+                    print(f"Visual: {visual_similarity:.3f}, Content: {content_score:.3f}, Smart Images: {image_score:.3f}")
                     
                     # Track best version with smart scoring
                     combined_score = (visual_similarity * 0.6) + (content_score * 0.3) + (image_score * 0.1)
                     if combined_score > best_similarity:
                         best_html = html_content
                         best_similarity = combined_score
-                        print(f"✅ New best combined score: {combined_score:.3f}")
+                        print(f"New best combined score: {combined_score:.3f}")
                     
                     iteration_results.append({
                         "iteration": iteration,
@@ -393,12 +390,12 @@ Return improved version with SMART image strategy and better styling."""
                     
                     # Stop if quality is good enough
                     if visual_similarity >= self.quality_threshold and image_score > 0.7:
-                        print(f"✅ Quality threshold reached!")
+                        print(f"Quality threshold reached!")
                         break
                     
                     # CRITICAL: If content score drops significantly, stop refining
                     if content_score < initial_content_score * 0.8:
-                        print(f"⚠️ Content score dropped too much, reverting to best version")
+                        print(f" Content score dropped too much, reverting to best version")
                         html_content = best_html
                         break
                     
@@ -408,7 +405,7 @@ Return improved version with SMART image strategy and better styling."""
                         html_content = await self._simple_refine(html_content, visual_similarity, iteration)
                 
                 except Exception as e:
-                    print(f"⚠️ Iteration {iteration} failed: {e}")
+                    print(f" Iteration {iteration} failed: {e}")
                     html_content = best_html
                     break
 
@@ -426,7 +423,7 @@ Return improved version with SMART image strategy and better styling."""
                 final_content_score = initial_content_score
                 final_image_score = initial_image_score
 
-            print(f"🎉 Cloning complete:")
+            print(f"   Cloning complete:")
             print(f"   Visual Similarity: {final_similarity:.3f}")
             print(f"   Content Score: {final_content_score:.3f}")
             print(f"   Smart Image Score: {final_image_score:.3f}")
@@ -450,7 +447,7 @@ Return improved version with SMART image strategy and better styling."""
             }
 
         except Exception as e:
-            print(f"❌ Cloning failed: {str(e)}")
+            print(f"Cloning failed: {str(e)}")
             traceback.print_exc()
             return {
                 "success": False,

@@ -14,4 +14,4 @@ def compare_base64_images(base64_img1: str, base64_img2: str) -> float:
     img2_array = decode_base64_to_grayscale_array(base64_img2)
 
     score, _ = ssim(img1_array, img2_array, full=True)
-    return score  # 1.0 = perfect match
+    return score 
