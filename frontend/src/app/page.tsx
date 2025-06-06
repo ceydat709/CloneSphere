@@ -315,7 +315,8 @@ export default function Home() {
               <iframe
                 srcDoc={clonedHtml}
                 className="w-full h-[80vh] border rounded-md"
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                title="Cloned Website Preview"
               />
             ) : (
               <img

@@ -1,12 +1,12 @@
 from playwright.async_api import async_playwright
 import base64
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 import re
 from colorthief import ColorThief
 from io import BytesIO
 from typing import Dict, Any
 
-# Universal improvements for intelligent_scraper.py
+# Universal improvements for intelligent_scraper.py with INTERACTIVE elements
 
 async def extract_comprehensive_visual_context(page, url: str):
     """
@@ -78,7 +78,7 @@ async def extract_comprehensive_visual_context(page, url: str):
                 const letterSpacing = new Map();
                 const textStyles = new Map();
 
-            // Check for Google Fonts, Adobe Fonts, or other web font services
+                // Check for Google Fonts, Adobe Fonts, or other web font services
                 const linkElements = document.querySelectorAll('link');
                 linkElements.forEach(link => {
                     const href = link.href || '';
@@ -90,7 +90,7 @@ async def extract_comprehensive_visual_context(page, url: str):
                         if (href.includes('fonts.googleapis.com')) {
                             const match = href.match(/family=([^&:]+)/);
                             if (match) {
-                                const fonts = match[1].split('|').map(f => f.replace(/\+/g, ' ').split(':')[0]);
+                                const fonts = match[1].split('|').map(f => f.replace(/\\+/g, ' ').split(':')[0]);
                                 fonts.forEach(font => customFonts.add(font));
                             }
                         }
@@ -464,6 +464,7 @@ async def extract_comprehensive_visual_context(page, url: str):
             };
             
             // Execute all analysis
+            analyzeTypography();
             analysis.grid_layouts = detectUniversalGrids();
             analysis.content_sections = detectContentSections();
             analysis.link_groups = detectLinkGroups();
@@ -671,11 +672,45 @@ def classify_site_category(visual_analysis, url: str) -> str:
     else:
         return 'business_site'
 
-async def intelligent_clone(url: str, mode: str = "classic"):
+def fix_relative_urls(base_url: str, href: str) -> str:
+    """
+    Fix relative URLs to absolute URLs, preserving functionality
+    """
+    if not href:
+        return href
+    
+    # Already absolute URL
+    if href.startswith(('http://', 'https://', '//')):
+        return href
+    
+    # Fragment/anchor links - keep as-is for page navigation
+    if href.startswith('#'):
+        return href
+    
+    # Email links
+    if href.startswith('mailto:'):
+        return href
+    
+    # Phone links
+    if href.startswith('tel:'):
+        return href
+    
+    # JavaScript links - keep as-is
+    if href.startswith('javascript:'):
+        return href
+    
+    # Relative URLs - convert to absolute
+    try:
+        return urljoin(base_url, href)
+    except Exception:
+        return href
+
+async def intelligent_clone(url: str, mode: str = "classic", keep_interactive: bool = True):
     """
     Hybrid scraper that provides:
     - Classic mode: Simple, reliable HTML preservation
     - LLM modes: Enhanced context extraction for AI processing
+    - NEW: keep_interactive flag to maintain button/link functionality
     """
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -694,7 +729,7 @@ async def intelligent_clone(url: str, mode: str = "classic"):
         page = await context.new_page()
         
         try:
-            print(f"🌐 Loading: {url} (mode: {mode})")
+            print(f"🌐 Loading: {url} (mode: {mode}, interactive: {keep_interactive})")
             await page.goto(url, wait_until="networkidle", timeout=60000)
             
             # Enhanced loading for LLM modes
@@ -762,74 +797,147 @@ async def intelligent_clone(url: str, mode: str = "classic"):
             await page.wait_for_timeout(2000)
             
             print("🔗 Fixing relative URLs...")
-            # Enhanced relative path fixing
+            # Enhanced relative path fixing - KEEPING FUNCTIONALITY
+            base_url_parsed = urlparse(url)
+            base_domain = f"{base_url_parsed.scheme}://{base_url_parsed.netloc}"
+            
             await page.evaluate(f"""
                 () => {{
                     const baseUrl = '{url}';
+                    const baseDomain = '{base_domain}';
                     
-                    const fix = (attr) => {{
+                    // Fix relative URLs while preserving functionality
+                    const fixUrls = (attr, shouldPreserve = false) => {{
                         const elements = document.querySelectorAll(`[${{attr}}]`);
                         elements.forEach(el => {{
                             const val = el.getAttribute(attr);
-                            if (val && val.startsWith('/') && !val.startsWith('//')) {{
-                                const newUrl = new URL(val, baseUrl).href;
-                                el.setAttribute(attr, newUrl);
+                            if (val) {{
+                                // Skip fragments, mailto, tel, javascript
+                                if (val.startsWith('#') || val.startsWith('mailto:') || 
+                                    val.startsWith('tel:') || val.startsWith('javascript:')) {{
+                                    return;
+                                }}
+                                
+                                // Fix relative URLs to absolute
+                                if (val.startsWith('/') && !val.startsWith('//')) {{
+                                    const newUrl = baseDomain + val;
+                                    el.setAttribute(attr, newUrl);
+                                    
+                                    // For links, add target="_blank" to external links
+                                    if (attr === 'href' && el.tagName === 'A') {{
+                                        el.setAttribute('target', '_blank');
+                                        el.setAttribute('rel', 'noopener noreferrer');
+                                    }}
+                                }} else if (!val.startsWith('http') && !val.startsWith('//')) {{
+                                    // Handle relative paths
+                                    try {{
+                                        const newUrl = new URL(val, baseUrl).href;
+                                        el.setAttribute(attr, newUrl);
+                                        
+                                        if (attr === 'href' && el.tagName === 'A') {{
+                                            el.setAttribute('target', '_blank');
+                                            el.setAttribute('rel', 'noopener noreferrer');
+                                        }}
+                                    }} catch (e) {{
+                                        // Keep original if URL parsing fails
+                                    }}
+                                }}
                             }}
                         }});
                     }};
                     
-                    fix('src');
-                    fix('href');
-                    fix('action');
+                    // Fix all URL attributes
+                    fixUrls('src');
+                    fixUrls('href', true); // Preserve link functionality
+                    fixUrls('action');
                     
                     // Fix CSS url() references
                     const styles = document.querySelectorAll('style');
                     styles.forEach(style => {{
                         if (style.textContent) {{
                             style.textContent = style.textContent.replace(
-                                /url\(['"]?\/([^'")\s]+)['"]?\)/g,
-                                `url('${{baseUrl}}/$1')`
+                                /url\\(['"]?\\/([^'")\\s]+)['"]?\\)/g,
+                                `url('${{baseDomain}}/$1')`
                             );
                         }}
                     }});
                 }}
             """)
             
-            print("🔒 Disabling interactive elements...")
-            await page.evaluate("""
-                () => {
-                    // Disable all links
-                    document.querySelectorAll('a').forEach(link => {
-                        const href = link.getAttribute('href');
-                        if (href && !href.startsWith('#')) {
-                            link.setAttribute('data-original-href', href);
-                            link.setAttribute('href', '#');
-                        }
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            return false;
+            # CONDITIONAL interactive element handling
+            if keep_interactive:
+                print("✅ Keeping interactive elements functional...")
+                # Only add safety measures, don't disable functionality
+                await page.evaluate("""
+                    () => {
+                        // Add safety attributes to forms without disabling them
+                        document.querySelectorAll('form').forEach(form => {
+                            // Add novalidate to prevent browser validation issues
+                            form.setAttribute('novalidate', '');
+                            
+                            // If form has no action, prevent submission
+                            if (!form.getAttribute('action')) {
+                                form.addEventListener('submit', (e) => {
+                                    e.preventDefault();
+                                    console.log('Form submission prevented - no action specified');
+                                    return false;
+                                });
+                            }
                         });
-                    });
-                    
-                    // Disable all forms
-                    document.querySelectorAll('form').forEach(form => {
-                        form.addEventListener('submit', (e) => {
-                            e.preventDefault();
-                            return false;
+                        
+                        // Add click tracking for buttons (optional)
+                        document.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                console.log('Button clicked:', btn.textContent || btn.value);
+                                // Don't prevent default - let button work normally
+                            });
                         });
-                        form.setAttribute('onsubmit', 'return false;');
-                    });
-                    
-                    // Disable all buttons
-                    document.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            return false;
+                        
+                        // Add click tracking for links
+                        document.querySelectorAll('a').forEach(link => {
+                            link.addEventListener('click', (e) => {
+                                console.log('Link clicked:', link.href);
+                                // Don't prevent default - let link work normally
+                            });
                         });
-                        btn.setAttribute('onclick', 'return false;');
-                    });
-                }
-            """)
+                    }
+                """)
+            else:
+                print("🔒 Disabling interactive elements...")
+                await page.evaluate("""
+                    () => {
+                        // Disable all links
+                        document.querySelectorAll('a').forEach(link => {
+                            const href = link.getAttribute('href');
+                            if (href && !href.startsWith('#')) {
+                                link.setAttribute('data-original-href', href);
+                                link.setAttribute('href', '#');
+                            }
+                            link.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                return false;
+                            });
+                        });
+                        
+                        // Disable all forms
+                        document.querySelectorAll('form').forEach(form => {
+                            form.addEventListener('submit', (e) => {
+                                e.preventDefault();
+                                return false;
+                            });
+                            form.setAttribute('onsubmit', 'return false;');
+                        });
+                        
+                        // Disable all buttons
+                        document.querySelectorAll('button, input[type="button"], input[type="submit"]').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                return false;
+                            });
+                            btn.setAttribute('onclick', 'return false;');
+                        });
+                    }
+                """)
             
             await page.wait_for_timeout(1000)
             
@@ -858,7 +966,8 @@ async def intelligent_clone(url: str, mode: str = "classic"):
                         element_count: document.querySelectorAll('*').length,
                         image_count: document.querySelectorAll('img').length,
                         link_count: document.querySelectorAll('a').length,
-                        button_count: document.querySelectorAll('button, input[type="button"], input[type="submit"]').length
+                        button_count: document.querySelectorAll('button, input[type="button"], input[type="submit"]').length,
+                        interactive_preserved: true // Flag to indicate interactivity status
                     };
                 }
             """)
@@ -871,7 +980,7 @@ async def intelligent_clone(url: str, mode: str = "classic"):
                 # NEW: Comprehensive visual context extraction
                 visual_context = await extract_comprehensive_visual_context(page, url)
                 
-                # Extract text content
+                # Extract text content with interactive element details
                 content_data = await page.evaluate("""
                     () => {
                         const extractText = (selector, limit = 50) => {
@@ -885,26 +994,79 @@ async def intelligent_clone(url: str, mode: str = "classic"):
                             }
                         };
                         
-                        const extractButtons = () => {
-                            const buttons = [];
-                            const buttonSelectors = ['button', '[role="button"]', 'input[type="button"]', 'input[type="submit"]', '.btn'];
+                        const extractInteractiveElements = () => {
+                            const interactive = {
+                                buttons: [],
+                                links: [],
+                                forms: []
+                            };
                             
+                            // Extract button details with their actions
+                            const buttonSelectors = ['button', '[role="button"]', 'input[type="button"]', 'input[type="submit"]', '.btn'];
                             buttonSelectors.forEach(selector => {
                                 document.querySelectorAll(selector).forEach(el => {
                                     const text = el.textContent?.trim() || el.value?.trim() || el.alt?.trim();
+                                    const onclick = el.getAttribute('onclick') || '';
+                                    const type = el.type || 'button';
+                                    const className = el.className || '';
+                                    
                                     if (text && text.length < 100) {
-                                        buttons.push(text);
+                                        interactive.buttons.push({
+                                            text,
+                                            type,
+                                            onclick,
+                                            className,
+                                            hasForm: !!el.closest('form')
+                                        });
                                     }
                                 });
                             });
                             
-                            return buttons.slice(0, 20);
+                            // Extract link details with their destinations
+                            document.querySelectorAll('a[href]').forEach(link => {
+                                const text = link.textContent?.trim();
+                                const href = link.getAttribute('href');
+                                const target = link.getAttribute('target') || '';
+                                const className = link.className || '';
+                                
+                                if (text && text.length < 100 && href) {
+                                    interactive.links.push({
+                                        text,
+                                        href,
+                                        target,
+                                        className,
+                                        isExternal: href.startsWith('http') && !href.includes(window.location.hostname),
+                                        isAnchor: href.startsWith('#')
+                                    });
+                                }
+                            });
+                            
+                            // Extract form details
+                            document.querySelectorAll('form').forEach(form => {
+                                const action = form.getAttribute('action') || '';
+                                const method = form.getAttribute('method') || 'GET';
+                                const inputs = Array.from(form.querySelectorAll('input, textarea, select')).map(input => ({
+                                    type: input.type || input.tagName.toLowerCase(),
+                                    name: input.name || '',
+                                    placeholder: input.placeholder || '',
+                                    required: input.required || false
+                                }));
+                                
+                                interactive.forms.push({
+                                    action,
+                                    method,
+                                    inputs,
+                                    hasSubmitButton: !!form.querySelector('button[type="submit"], input[type="submit"]')
+                                });
+                            });
+                            
+                            return interactive;
                         };
                         
                         return {
                             headings: extractText('h1, h2, h3, h4, h5, h6', 20),
                             paragraphs: extractText('p', 30),
-                            buttons: extractButtons(),
+                            interactive_elements: extractInteractiveElements(),
                             navigation: extractText('nav a, .nav a, .navbar a', 30),
                             footer: document.querySelector('footer, .footer')?.textContent?.trim()?.slice(0, 500) || '',
                             main_content: document.querySelector('main, .main, #main')?.textContent?.slice(0, 2000) || '',
@@ -951,10 +1113,17 @@ async def intelligent_clone(url: str, mode: str = "classic"):
                         "title": title,
                         "complexity": layout_info.get('element_count', 0),
                         "requires_scroll": len(html) > 50000
+                    },
+                    "interactivity": {
+                        "preserved": keep_interactive,
+                        "button_count": len(content_data.get('interactive_elements', {}).get('buttons', [])),
+                        "link_count": len(content_data.get('interactive_elements', {}).get('links', [])),
+                        "form_count": len(content_data.get('interactive_elements', {}).get('forms', []))
                     }
                 }
             
             print(f"✅ {mode.capitalize()} scraping completed successfully!")
+            print(f"🔗 Interactive elements: {'PRESERVED' if keep_interactive else 'DISABLED'}")
             
         except Exception as e:
             print(f"❌ Error during scraping: {e}")
@@ -972,11 +1141,12 @@ async def intelligent_clone(url: str, mode: str = "classic"):
             "metadata": {
                 "url": url,
                 "mode": mode,
+                "interactive_preserved": keep_interactive,
                 "extraction_timestamp": "2024-current",
                 "content_loaded": True,
                 "links_fixed": True,
                 "css_inlined": True,
-                "elements_disabled": True
+                "elements_status": "preserved" if keep_interactive else "disabled"
             }
         }
         
@@ -985,3 +1155,15 @@ async def intelligent_clone(url: str, mode: str = "classic"):
             base_response.update(enhanced_data)
         
         return base_response
+
+# Usage examples:
+"""
+# For interactive clone (buttons/links work):
+result = await intelligent_clone("https://example.com", mode="llm", keep_interactive=True)
+
+# For static clone (original behavior):
+result = await intelligent_clone("https://example.com", mode="llm", keep_interactive=False)
+
+# Classic mode with interactivity:
+result = await intelligent_clone("https://example.com", mode="classic", keep_interactive=True)
+"""

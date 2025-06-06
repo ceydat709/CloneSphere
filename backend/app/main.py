@@ -119,17 +119,21 @@ async def clone_website_endpoint(request: CloneRequest):
         )
 
 async def handle_classic_clone(request: CloneRequest, start_time: float) -> CloneResponse:
-    """Handle classic direct HTML cloning - fast and reliable"""
-    print("🔧 Using Classic Mode (Direct HTML Preservation)")
+    """Handle classic direct HTML cloning - fast and reliable WITH INTERACTIVE ELEMENTS"""
+    print("🔧 Using Classic Mode (Direct HTML Preservation + Interactive Elements)")
     
-    # Use intelligent scraper in classic mode
-    result = await intelligent_clone(request.url, mode="classic")
+    # FIXED: Use intelligent scraper with interactive elements enabled
+    result = await intelligent_clone(
+        request.url, 
+        mode="classic", 
+        keep_interactive=True  # ← This enables button/link functionality!
+    )
     
     if not result.get("success"):
         raise HTTPException(status_code=500, detail="Classic clone failed")
 
     processing_time = time.time() - start_time
-    print(f"✅ Classic clone completed in {processing_time:.2f}s")
+    print(f"✅ Classic clone with interactive elements completed in {processing_time:.2f}s")
 
     return CloneResponse(
         success=True,
@@ -138,14 +142,16 @@ async def handle_classic_clone(request: CloneRequest, start_time: float) -> Clon
         layout=result.get("layout", {}),
         processing_time=processing_time,
         iterations=1,
-        visual_similarity=1.0,  # Classic preserves original CSS
-        content_completeness=1.0,  # Classic preserves all content
-        scraper_data_utilization=1.0,  # Classic uses original HTML
+        visual_similarity=1.0,
+        content_completeness=1.0,
+        scraper_data_utilization=1.0,
         analysis={
             "mode": "classic",
             "method": "direct_html_preservation",
             "css_inlined": True,
-            "links_disabled": True,
+            "interactive_elements": "enabled",  # ← Updated
+            "links_functional": True,           # ← Updated
+            "buttons_functional": True,         # ← Updated
             "quality_score": 1.0
         }
     )
@@ -156,8 +162,12 @@ async def handle_llm_clone(request: CloneRequest, start_time: float) -> CloneRes
     
     # Use intelligent scraper in LLM mode for rich context
     print("📊 Running intelligent scraper...")
-    scraped_data = await intelligent_clone(request.url, mode="llm")
-    
+    scraped_data = await intelligent_clone(
+        request.url, 
+        mode="llm",
+        keep_interactive=True  # ← Enable for LLM mode too
+    )
+      
     if not scraped_data.get("success"):
         raise HTTPException(status_code=500, detail="Scraping failed")
 
@@ -212,7 +222,11 @@ async def handle_iterative_clone(request: CloneRequest, start_time: float) -> Cl
     
     # Use intelligent scraper in iterative mode
     print("📸 Running comprehensive scraping...")
-    scraped_data = await intelligent_clone(request.url, mode="iterative")
+    scraped_data = await intelligent_clone(
+        request.url, 
+        mode="iterative",
+        keep_interactive=True 
+    )
     
     if not scraped_data.get("success"):
         raise HTTPException(status_code=500, detail="Scraping failed")
