@@ -1,4 +1,4 @@
-# Orchids SWE Intern Challenge Template
+A web app that takes in any given public website URL, scrape the website URL for useful design context and give it to an LLM model to replicate the website in HTML.
 
 This project consists of a backend built with FastAPI and a frontend built with Next.js and TypeScript.
 
